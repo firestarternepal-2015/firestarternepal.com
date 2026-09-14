@@ -305,7 +305,7 @@
     <div class="navlinks" id="navLinks">
       <a href="#about">About</a>
       <a href="#events">Events &amp; Trainings</a>
-      <a href="#concerts">Past Concerts</a>
+      <a href="journey.html">Past Concerts</a>
       <a href="#support">Sow &amp; Support</a>
       <a href="#contact">Contact</a>
     </div>
@@ -333,7 +333,7 @@
     <p class="lede">Firestarter Nepal unites people through worship, music, and the Word of God — concerts, trainings, and gatherings that ignite hearts for Christ across Nepal and beyond.</p>
     <div class="hero-cta">
       <a href="#events" class="ticket-btn">See Upcoming Events</a>
-      <a href="#concerts" class="ticket-btn ghost">Our Journey</a>
+      <a href="journey.html" class="ticket-btn ghost">Our Journey</a>
     </div>
   </div>
   <div class="hero-strip">
@@ -387,6 +387,9 @@
   </div>
   <div class="wrap">
     <div class="ticket-grid" id="ticketGrid"></div>
+    <div style="text-align:center; margin-top:48px;">
+      <a href="journey.html" class="ticket-btn">View Our Full Journey</a>
+    </div>
   </div>
 </section>
 
@@ -491,7 +494,7 @@ const legacyConcerts = [
 ];
 
 function renderConcerts(extra) {
-  const all = [...extra, ...legacyConcerts];
+  const all = [...extra, ...legacyConcerts].slice(0, 3); // homepage teaser — full list lives on journey.html
 
   const grid = document.getElementById('ticketGrid');
   grid.innerHTML = all.map(c => `
