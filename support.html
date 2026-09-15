@@ -442,20 +442,20 @@ renderStripeButton();
 // Bank transfer details — fill these in and they'll appear on the page automatically.
 // Leave all blank to show a "coming soon" note instead.
 const BANK_DETAILS = {
-  accountName: "",
+  accountName: "FIRESTARTER NEPAL LTD",
   bankName: "",
-  accountNumber: "",
-  branch: "",
-  swiftBic: ""
+  sortCode: "04-00-05",
+  accountNumber: "09335590",
+  iban: "GB62 MONZ 0400 0509 3355 90"
 };
 
 const bankWrap = document.getElementById('bankDetailsWrap');
 const bankRows = Object.entries({
   "Account Name": BANK_DETAILS.accountName,
   "Bank": BANK_DETAILS.bankName,
+  "Sort Code": BANK_DETAILS.sortCode,
   "Account No.": BANK_DETAILS.accountNumber,
-  "Branch": BANK_DETAILS.branch,
-  "SWIFT/BIC": BANK_DETAILS.swiftBic
+  "IBAN": BANK_DETAILS.iban
 }).filter(([, v]) => v && v.trim());
 
 if (bankRows.length) {
