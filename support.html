@@ -166,6 +166,12 @@
     .amount-card{padding:28px 22px;}
     .amount-grid{grid-template-columns:repeat(2, 1fr);}
   }
+  .amount-card.shake{animation:shakeX .4s ease;}
+  @keyframes shakeX{
+    0%,100%{transform:translateX(0);}
+    25%{transform:translateX(-6px);}
+    75%{transform:translateX(6px);}
+  }
 
   /* Bank transfer detail card, styled like the flyer elsewhere on the site */
   .flyer{
@@ -248,17 +254,17 @@
 
     <div class="amount-card">
       <div class="amount-grid" id="amountGrid">
-        <button type="button" class="amount-btn" data-amount="10">$10</button>
-        <button type="button" class="amount-btn" data-amount="25">$25</button>
-        <button type="button" class="amount-btn" data-amount="50">$50</button>
-        <button type="button" class="amount-btn" data-amount="100">$100</button>
+        <button type="button" class="amount-btn" data-amount="10">£10</button>
+        <button type="button" class="amount-btn" data-amount="25">£25</button>
+        <button type="button" class="amount-btn" data-amount="50">£50</button>
+        <button type="button" class="amount-btn" data-amount="100">£100</button>
       </div>
       <div class="amount-custom">
-        <span class="amount-custom-prefix">$</span>
+        <span class="amount-custom-prefix">£</span>
         <input type="number" id="customAmount" placeholder="Custom amount" min="1" step="1">
       </div>
       <div id="stripeButtonWrap" style="margin-top:26px; text-align:center;"></div>
-      <p class="amount-note">You'll confirm this amount on Stripe's secure page before anything is charged.</p>
+      <p class="amount-note">Your chosen amount carries straight through to Stripe's secure checkout page.</p>
     </div>
   </div>
 </section>
@@ -362,31 +368,58 @@ navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav
 })();
 
 // ---------- GIVING CONFIG ----------
-// Paste your Stripe Payment Link here (from the Stripe Dashboard → Payment Links).
-// Leave blank and the button will show "Coming Soon" instead of a broken link.
-//
-// Note on amounts: Stripe Payment Links don't accept an amount via URL parameter —
-// there's no supported way for this page to hand off an exact figure to Stripe.
-// The picker below is a UX aid: it primes the visitor with a number and updates the
-// button label, but the actual amount is entered/confirmed on Stripe's own page
-// (which has its own editable amount field, since this is a "customer chooses what
-// to pay" link). If you ever want the amount to appear pre-filled with no re-entry
-// step, that requires a small server-side integration with the Stripe API rather
-// than a plain link — ask if you'd like that built.
+// Fallback link (used only if the checkout function below is unreachable —
+// e.g. before you've deployed the Netlify function, or if it errors).
 const STRIPE_PAYMENT_LINK = "https://donate.stripe.com/aFa4gydhHaDC2cggZTbEA06";
 
+// This calls a small serverless function (netlify/functions/create-checkout-session.js)
+// that creates a Stripe Checkout Session for the exact amount chosen below, so that
+// amount is what actually shows on Stripe's page — no re-typing required.
+// This only works once the site is deployed on Netlify with STRIPE_SECRET_KEY set
+// as an environment variable (see README-SETUP.md). Until then, it falls back to
+// the plain link above.
+const CHECKOUT_FUNCTION_URL = "/.netlify/functions/create-checkout-session";
+
 const stripeWrap = document.getElementById('stripeButtonWrap');
+const amountCard = document.querySelector('.amount-card');
 const amountButtons = document.querySelectorAll('.amount-btn');
 const customAmountInput = document.getElementById('customAmount');
 let selectedAmount = null;
 
 function renderStripeButton() {
-  if (!STRIPE_PAYMENT_LINK) {
-    stripeWrap.innerHTML = `<span class="ticket-btn disabled">Online Giving Coming Soon</span>`;
+  const label = selectedAmount ? `Give £${selectedAmount} Securely Online ↗` : `Give Securely Online ↗`;
+  stripeWrap.innerHTML = `<button type="button" id="giveBtn" class="ticket-btn">${label}</button>`;
+  document.getElementById('giveBtn').addEventListener('click', handleGiveClick);
+}
+
+async function handleGiveClick() {
+  if (!selectedAmount || Number(selectedAmount) < 1) {
+    amountCard.classList.add('shake');
+    setTimeout(() => amountCard.classList.remove('shake'), 400);
+    customAmountInput.focus();
     return;
   }
-  const label = selectedAmount ? `Give $${selectedAmount} Securely Online ↗` : `Give Securely Online ↗`;
-  stripeWrap.innerHTML = `<a href="${STRIPE_PAYMENT_LINK}" target="_blank" rel="noopener" class="ticket-btn">${label}</a>`;
+
+  const btn = document.getElementById('giveBtn');
+  btn.textContent = 'Redirecting to Stripe…';
+  btn.classList.add('disabled');
+
+  try {
+    const res = await fetch(CHECKOUT_FUNCTION_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: selectedAmount }),
+    });
+    if (!res.ok) throw new Error('Checkout function unavailable');
+    const data = await res.json();
+    if (!data.url) throw new Error('No checkout URL returned');
+    window.location.href = data.url;
+  } catch (err) {
+    // Function not deployed yet, or errored — fall back to the plain Stripe link
+    // rather than leaving the visitor stuck.
+    window.open(STRIPE_PAYMENT_LINK, '_blank', 'noopener');
+    renderStripeButton();
+  }
 }
 
 amountButtons.forEach(btn => {

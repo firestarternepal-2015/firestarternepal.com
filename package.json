@@ -1,0 +1,7 @@
+{
+  "name": "firestarter-nepal-site",
+  "private": true,
+  "dependencies": {
+    "stripe": "^22.0.0"
+  }
+}
