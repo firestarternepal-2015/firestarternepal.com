@@ -360,7 +360,8 @@ const GITHUB_REPO = "firestarternepal.com";
 const GITHUB_BRANCH = "main";
 const GITHUB_GALLERY_PATH = "images/Events";
 
-const galleryCache = {}; // slug -> array of {url, name}, shared across concerts + trainings
+const galleryCache = {}; // slug -> array of {url, name}, in-memory for this page view
+const GALLERY_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — see note below
 
 async function fetchGithubFolder(slug) {
   if (!GITHUB_OWNER || !GITHUB_REPO) return [];
@@ -379,9 +380,41 @@ async function fetchGithubFolder(slug) {
   }
 }
 
+// GitHub allows only 60 unread requests/hour per visitor for anonymous API calls, and this
+// page checks every event's folder on load. Caching in localStorage means a visitor (or you,
+// while testing) only actually hits GitHub once per event per 30 minutes — and if a fetch
+// ever comes back empty because the limit was hit, we fall back to the last known-good result
+// instead of wrongly showing "no photos yet."
 async function getEventImages(slug) {
   if (galleryCache[slug]) return galleryCache[slug];
+
+  const storageKey = `fsnGallery:${slug}`;
+  let cached = null;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (raw) cached = JSON.parse(raw);
+  } catch (e) {}
+
+  if (cached && (Date.now() - cached.t < GALLERY_CACHE_TTL_MS)) {
+    galleryCache[slug] = cached.images;
+    return cached.images;
+  }
+
   const imgs = await fetchGithubFolder(slug);
+
+  if (imgs.length > 0) {
+    galleryCache[slug] = imgs;
+    try { localStorage.setItem(storageKey, JSON.stringify({ t: Date.now(), images: imgs })); } catch (e) {}
+    return imgs;
+  }
+
+  // Empty result — could be a real empty folder, or could be a rate-limited/failed request.
+  // If we have any older cached photos for this event, trust those over an empty result.
+  if (cached) {
+    galleryCache[slug] = cached.images;
+    return cached.images;
+  }
+
   galleryCache[slug] = imgs;
   return imgs;
 }
