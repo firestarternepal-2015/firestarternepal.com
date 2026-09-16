@@ -342,21 +342,23 @@ navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav
 
 // ---------- SHARED: SLUGS + GITHUB PHOTO FETCHING ----------
 function slugify(title) {
-  return (title || '').toString().trim().toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  // Folder names match the event Title exactly (e.g. "Hepzibah Christmas Gospel"),
+  // spaces and capitalization included — simplest to create by hand in GitHub.
+  return (title || '').toString().trim();
 }
 function withSlug(c) {
   return { ...c, slug: (c.galleryFolder && c.galleryFolder.trim()) ? c.galleryFolder.trim() : slugify(c.title) };
 }
 
-// Photos live in a public GitHub repo, one subfolder per event/training:
-//   <repo>/<GITHUB_GALLERY_PATH>/<event-slug>/photo1.jpg, photo2.jpg, ...
-// The slug is auto-generated from the Title (lowercased, spaces to hyphens),
-// or set it explicitly per-row with an optional "GalleryFolder" column in the Content sheet.
-const GITHUB_OWNER = "";
-const GITHUB_REPO = "";
+// Photos live in a public GitHub repo, one subfolder per event/training, named
+// exactly like the event's Title:
+//   <repo>/<GITHUB_GALLERY_PATH>/<Event Title>/photo1.jpg, photo2.jpg, ...
+// Use the optional "GalleryFolder" column in the Content sheet only when you want
+// the folder name to differ from the Title (e.g. two trainings sharing one title).
+const GITHUB_OWNER = "firestarternepal-2015";
+const GITHUB_REPO = "firestarternepal.com";
 const GITHUB_BRANCH = "main";
-const GITHUB_GALLERY_PATH = "gallery";
+const GITHUB_GALLERY_PATH = "images/Events";
 
 const galleryCache = {}; // slug -> array of {url, name}, shared across concerts + trainings
 
@@ -525,12 +527,12 @@ const legacyTrainings = [
   {
     year: 'May', title: 'Church Music Ministry Training', location: 'Japan (Online)',
     leader: 'Daniel Gadal — Den Studios Academy', description: CHURCH_MUSIC_CURRICULUM,
-    galleryFolder: 'church-music-training-japan', type: 'Training'
+    galleryFolder: 'Church Music Ministry Training Japan', type: 'Training'
   },
   {
     year: 'March', title: 'Church Music Ministry Training', location: 'United Kingdom (Online)',
     leader: 'Daniel Gadal — Den Studios Academy', description: CHURCH_MUSIC_CURRICULUM,
-    galleryFolder: 'church-music-training-uk', type: 'Training'
+    galleryFolder: 'Church Music Ministry Training UK', type: 'Training'
   },
 ].map(withSlug);
 
