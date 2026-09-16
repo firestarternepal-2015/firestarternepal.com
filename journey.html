@@ -153,6 +153,9 @@
   .event-detail h3{font-family:'Manrope'; font-weight:800; text-transform:none; font-size:1.4rem; margin-bottom:8px;}
   .event-detail .meta{color:var(--text-muted); font-size:0.92rem; margin-bottom:12px;}
   .event-detail .desc{color:var(--text-muted); font-size:0.98rem; margin-bottom:18px;}
+  .desc ul{margin:10px 0 0; padding-left:20px;}
+  .desc li{margin-bottom:7px; font-size:0.94rem; line-height:1.5;}
+  .desc li::marker{color:var(--gold);}
   .gallery-loading{grid-column:1/-1; color:var(--text-muted); font-style:italic; padding:30px 0; text-align:center;}
 
   /* Accordion panel — inline gallery that opens directly below a tapped title (mobile only) */
@@ -242,7 +245,7 @@
   <div class="wrap">
     <span class="tag-stub">✦ Since 2015</span>
     <h1>Our Journey</h1>
-    <p class="lede">Every worship night, concert, and gathering Firestarter Nepal has held — in Nepal and abroad — with photos from the road. This page grows the same way the rest of the site does: add a row to the Sheet, it shows up here.</p>
+    <p class="lede">Every worship night, concert, training, and gathering Firestarter Nepal has held — in Nepal and abroad — with photos from the road. This page grows the same way the rest of the site does: add a row to the Sheet, it shows up here.</p>
     <div id="fullGalleryLinkWrap" style="margin-top:30px;"></div>
   </div>
 </section>
@@ -251,8 +254,8 @@
   <div class="wrap">
     <div class="sec-head">
       <span class="tag-stub">The Full List</span>
-      <h2>Past Concerts &amp; Gatherings</h2>
-      <p>Pick an event on the left to see its photos on the right.</p>
+      <h2>Concerts &amp; Trainings</h2>
+      <p>Every concert, gathering, and training so far. Pick one on the left to see its details and photos on the right.</p>
     </div>
     <div class="journey-layout">
       <div class="event-list" id="eventList"></div>
@@ -337,7 +340,7 @@ navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav
   init(); tick();
 })();
 
-// ---------- FULL PAST CONCERTS LIST ----------
+// ---------- SHARED: SLUGS + GITHUB PHOTO FETCHING ----------
 function slugify(title) {
   return (title || '').toString().trim().toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -346,29 +349,16 @@ function withSlug(c) {
   return { ...c, slug: (c.galleryFolder && c.galleryFolder.trim()) ? c.galleryFolder.trim() : slugify(c.title) };
 }
 
-const legacyConcerts = [
-  {year:'2026', title:'Judah Plows', location:'London, UK', leader:'Eld. Dev Gurung'},
-  {year:'2025', title:'Samir Diyali', location:'Aldershot, UK', leader:'Pastor John Sunuwar'},
-  {year:'2020', title:'Bijaune Kada', location:'Nayagaun Church, Pokhara', leader:'Pastor Daniel Tirwa'},
-  {year:'2017', title:'Adrian Dewan in Dubai', location:'Dubai', leader:'Pastor Bikash Adhikari'},
-  {year:'2017', title:'Motivational Program with Subash Mashi', location:'Nayagaun Church, Pokhara', leader:'Pastor Grishma Parajuli'},
-  {year:'2015', title:'Hepzibah Worship Concert', location:'Pokhara City Hall, Pokhara', leader:'Pastor Grishma Parajuli'},
-  {year:'2015', title:'Hepzibah Christmas Gospel', location:'Nayabazar Hall, Pokhara', leader:'Pastor Grishma Parajuli'},
-  {year:'2015', title:'Firestarter Unleashed', location:'Tumdhee Hall, Pokhara', leader:'Pastor Grishma Parajuli'},
-].map(withSlug);
-
-let concertsData = [...legacyConcerts];
-let activeIndex = 0;
-const galleryCache = {}; // slug -> array of {url, name}, filled in as folders are fetched
-
-// Photos live in a public GitHub repo, one subfolder per event:
+// Photos live in a public GitHub repo, one subfolder per event/training:
 //   <repo>/<GITHUB_GALLERY_PATH>/<event-slug>/photo1.jpg, photo2.jpg, ...
-// The event-slug is auto-generated from the concert Title (lowercased, spaces to hyphens),
+// The slug is auto-generated from the Title (lowercased, spaces to hyphens),
 // or set it explicitly per-row with an optional "GalleryFolder" column in the Content sheet.
 const GITHUB_OWNER = "";
 const GITHUB_REPO = "";
 const GITHUB_BRANCH = "main";
 const GITHUB_GALLERY_PATH = "gallery";
+
+const galleryCache = {}; // slug -> array of {url, name}, shared across concerts + trainings
 
 async function fetchGithubFolder(slug) {
   if (!GITHUB_OWNER || !GITHUB_REPO) return [];
@@ -394,35 +384,6 @@ async function getEventImages(slug) {
   return imgs;
 }
 
-function renderEventList() {
-  const listEl = document.getElementById('eventList');
-  listEl.innerHTML = concertsData.map((c, i) => `
-    <div class="poster-block">
-      <div class="poster-item${i === activeIndex ? ' active' : ''}" data-index="${i}">
-        <div class="poster-thumb" id="thumb-${i}">🔥</div>
-        <div class="poster-info">
-          <h4><span class="year">${c.year || ''}</span>${c.title}</h4>
-          <div class="meta">${c.location || ''}</div>
-        </div>
-      </div>
-      <div class="poster-panel" data-index="${i}"></div>
-    </div>
-  `).join('');
-  listEl.querySelectorAll('.poster-item').forEach(el => {
-    el.addEventListener('click', () => {
-      const idx = parseInt(el.dataset.index, 10);
-      const panel = listEl.querySelector(`.poster-panel[data-index="${idx}"]`);
-      // Tapping an already-open item on mobile collapses it back
-      if (idx === activeIndex && panel && panel.classList.contains('open')) {
-        panel.classList.remove('open');
-        el.classList.remove('active');
-        return;
-      }
-      selectEvent(idx);
-    });
-  });
-}
-
 function renderGalleryHTML(images) {
   const minTiles = 4;
   const placeholdersNeeded = Math.max(0, minTiles - images.length);
@@ -443,58 +404,140 @@ function detailContentHTML(c) {
   `;
 }
 
-async function selectEvent(index) {
-  activeIndex = index;
-  document.querySelectorAll('.poster-item').forEach(el => el.classList.toggle('active', parseInt(el.dataset.index, 10) === index));
+// ---------- REUSABLE MOVIE-POSTER BROWSER (used for the combined Concerts + Trainings list) ----------
+function createJourneyBrowser(listElId, detailElId) {
+  const listEl = document.getElementById(listElId);
+  const detailEl = document.getElementById(detailElId);
+  let items = [];
+  let activeIndex = 0;
 
-  const c = concertsData[index];
-  const html = detailContentHTML(c);
-
-  // Desktop: right-hand detail pane
-  const detail = document.getElementById('eventDetail');
-  if (detail) detail.innerHTML = html;
-
-  // Mobile: inline accordion panel, directly below the tapped title
-  document.querySelectorAll('.poster-panel').forEach(p => {
-    if (parseInt(p.dataset.index, 10) === index) {
-      p.innerHTML = html;
-      p.classList.add('open');
-    } else {
-      p.classList.remove('open');
-    }
-  });
-
-  const images = await getEventImages(c.slug);
-  const galleryHTML = renderGalleryHTML(images);
-  const desktopGallery = detail ? detail.querySelector('.event-gallery') : null;
-  if (desktopGallery) desktopGallery.innerHTML = galleryHTML;
-  const mobileGallery = document.querySelector(`.poster-panel[data-index="${index}"] .event-gallery`);
-  if (mobileGallery) mobileGallery.innerHTML = galleryHTML;
-
-  const thumbEl = document.getElementById(`thumb-${index}`);
-  if (thumbEl && images.length && !thumbEl.querySelector('img')) {
-    thumbEl.innerHTML = `<img src="${images[0].url}" alt="">`;
-  }
-}
-
-function preloadCovers() {
-  concertsData.forEach((c, i) => {
-    getEventImages(c.slug).then(images => {
-      if (!images.length) return;
-      const thumbEl = document.getElementById(`thumb-${i}`);
-      if (thumbEl && !thumbEl.querySelector('img')) {
-        thumbEl.innerHTML = `<img src="${images[0].url}" alt="">`;
-      }
+  function renderList() {
+    listEl.innerHTML = items.map((c, i) => `
+      <div class="poster-block">
+        <div class="poster-item${i === activeIndex ? ' active' : ''}" data-index="${i}">
+          <div class="poster-thumb" id="${listElId}-thumb-${i}">🔥</div>
+          <div class="poster-info">
+            <h4><span class="year">${c.year || ''}</span>${c.title}</h4>
+            <div class="meta">${c.location || ''}</div>
+          </div>
+        </div>
+        <div class="poster-panel" data-index="${i}"></div>
+      </div>
+    `).join('');
+    listEl.querySelectorAll('.poster-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const idx = parseInt(el.dataset.index, 10);
+        const panel = listEl.querySelector(`.poster-panel[data-index="${idx}"]`);
+        // Tapping an already-open item on mobile collapses it back
+        if (idx === activeIndex && panel && panel.classList.contains('open')) {
+          panel.classList.remove('open');
+          el.classList.remove('active');
+          return;
+        }
+        selectItem(idx);
+      });
     });
-  });
+  }
+
+  async function selectItem(index) {
+    activeIndex = index;
+    listEl.querySelectorAll('.poster-item').forEach(el => el.classList.toggle('active', parseInt(el.dataset.index, 10) === index));
+
+    const c = items[index];
+    const html = detailContentHTML(c);
+
+    if (detailEl) detailEl.innerHTML = html; // desktop pane
+    listEl.querySelectorAll('.poster-panel').forEach(p => { // mobile accordion
+      if (parseInt(p.dataset.index, 10) === index) { p.innerHTML = html; p.classList.add('open'); }
+      else p.classList.remove('open');
+    });
+
+    const images = await getEventImages(c.slug);
+    const galleryHTML = renderGalleryHTML(images);
+    const desktopGallery = detailEl ? detailEl.querySelector('.event-gallery') : null;
+    if (desktopGallery) desktopGallery.innerHTML = galleryHTML;
+    const mobileGallery = listEl.querySelector(`.poster-panel[data-index="${index}"] .event-gallery`);
+    if (mobileGallery) mobileGallery.innerHTML = galleryHTML;
+
+    const thumbEl = document.getElementById(`${listElId}-thumb-${index}`);
+    if (thumbEl && images.length && !thumbEl.querySelector('img')) {
+      thumbEl.innerHTML = `<img src="${images[0].url}" alt="">`;
+    }
+  }
+
+  function preloadCovers() {
+    items.forEach((c, i) => {
+      getEventImages(c.slug).then(images => {
+        if (!images.length) return;
+        const thumbEl = document.getElementById(`${listElId}-thumb-${i}`);
+        if (thumbEl && !thumbEl.querySelector('img')) {
+          thumbEl.innerHTML = `<img src="${images[0].url}" alt="">`;
+        }
+      });
+    });
+  }
+
+  return {
+    setData(newItems) {
+      items = newItems;
+      activeIndex = 0;
+      if (!items.length) { listEl.innerHTML = ''; if (detailEl) detailEl.innerHTML = ''; return; }
+      renderList();
+      selectItem(0);
+      preloadCovers();
+    }
+  };
 }
 
-function initJourney() {
-  renderEventList();
-  selectEvent(activeIndex);
-  preloadCovers();
-}
-initJourney();
+const journeyBrowser = createJourneyBrowser('eventList', 'eventDetail');
+
+// ---------- CONCERTS DATA ----------
+const legacyConcerts = [
+  {year:'2026', title:'Judah Plows', location:'London, UK', leader:'Eld. Dev Gurung', type:'Concert'},
+  {year:'2025', title:'Samir Diyali', location:'Aldershot, UK', leader:'Pastor John Sunuwar', type:'Concert'},
+  {year:'2020', title:'Bijaune Kada', location:'Nayagaun Church, Pokhara', leader:'Pastor Daniel Tirwa', type:'Concert'},
+  {year:'2017', title:'Adrian Dewan in Dubai', location:'Dubai', leader:'Pastor Bikash Adhikari', type:'Concert'},
+  {year:'2017', title:'Motivational Program with Subash Mashi', location:'Nayagaun Church, Pokhara', leader:'Pastor Grishma Parajuli', type:'Concert'},
+  {year:'2015', title:'Hepzibah Worship Concert', location:'Pokhara City Hall, Pokhara', leader:'Pastor Grishma Parajuli', type:'Concert'},
+  {year:'2015', title:'Hepzibah Christmas Gospel', location:'Nayabazar Hall, Pokhara', leader:'Pastor Grishma Parajuli', type:'Concert'},
+  {year:'2015', title:'Firestarter Unleashed', location:'Tumdhee Hall, Pokhara', leader:'Pastor Grishma Parajuli', type:'Concert'},
+].map(withSlug);
+
+// ---------- TRAININGS DATA ----------
+const CHURCH_MUSIC_CURRICULUM = `
+  <p style="margin-bottom:10px;">Topics covered:</p>
+  <ul>
+    <li>Arranging songs to serve worship and the congregation</li>
+    <li>Understanding song flow and worship dynamics</li>
+    <li>Creating smooth transitions within songs</li>
+    <li>Understanding sound frequencies and clarity</li>
+    <li>Giving each instrument and voice its own space</li>
+    <li>Creating a balanced stereo sound</li>
+    <li>Understanding the role of lead, backing, and choir vocals</li>
+    <li>Blending voices with unity and purpose</li>
+    <li>Understanding the role of each instrument in worship</li>
+    <li>Playing and singing with sensitivity to the moment</li>
+    <li>Working together as a worship and sound team</li>
+  </ul>
+`;
+
+const legacyTrainings = [
+  {
+    year: 'May', title: 'Church Music Ministry Training', location: 'Japan (Online)',
+    leader: 'Daniel Gadal — Den Studios Academy', description: CHURCH_MUSIC_CURRICULUM,
+    galleryFolder: 'church-music-training-japan', type: 'Training'
+  },
+  {
+    year: 'March', title: 'Church Music Ministry Training', location: 'United Kingdom (Online)',
+    leader: 'Daniel Gadal — Den Studios Academy', description: CHURCH_MUSIC_CURRICULUM,
+    galleryFolder: 'church-music-training-uk', type: 'Training'
+  },
+].map(withSlug);
+
+// Combined, newest-first where a year is known; the two trainings (month only, no year given
+// yet) sit right after the most recent concert — move them once exact years are added.
+let journeyData = [...legacyConcerts.slice(0, 1), ...legacyTrainings, ...legacyConcerts.slice(1)];
+journeyBrowser.setData(journeyData);
 
 // Full external gallery — e.g. a Google Photos album or Facebook album with everything.
 // Leave blank to hide the button; paste a link to show it at the top of the page.
@@ -505,8 +548,9 @@ if (FULL_GALLERY_URL) {
 }
 
 // ---------- SHEET-DRIVEN CONTENT ----------
-// Same published CSV as the homepage (Type=Concert, Status=Past rows).
+// Same published CSV as the homepage.
 // Sheet columns: Type | Status | Title | Date | Location | Leader | Description | GalleryLink | GalleryFolder
+// Both Type=Concert and Type=Training rows (with Status=Past) feed this same combined list.
 const SHEET_CSV_URL = "";
 
 if (SHEET_CSV_URL) {
@@ -515,15 +559,16 @@ if (SHEET_CSV_URL) {
     complete: function(results) {
       const rows = results.data.filter(r => r.Title && r.Title.trim());
       const norm = s => (s || '').trim().toLowerCase();
-      const pastConcerts = rows.filter(r => norm(r.Type) === 'concert' && norm(r.Status) === 'past')
+
+      const pastItems = rows.filter(r => (norm(r.Type) === 'concert' || norm(r.Type) === 'training') && norm(r.Status) === 'past')
         .map(r => withSlug({
           year: r.Date, title: r.Title, location: r.Location, leader: r.Leader,
-          description: r.Description, galleryLink: r.GalleryLink, galleryFolder: r.GalleryFolder
+          description: r.Description, galleryLink: r.GalleryLink, galleryFolder: r.GalleryFolder,
+          type: norm(r.Type) === 'training' ? 'Training' : 'Concert'
         }));
-      if (pastConcerts.length) {
-        concertsData = [...pastConcerts, ...legacyConcerts];
-        activeIndex = 0;
-        initJourney();
+      if (pastItems.length) {
+        journeyData = [...pastItems, ...legacyConcerts.slice(0, 1), ...legacyTrainings, ...legacyConcerts.slice(1)];
+        journeyBrowser.setData(journeyData);
       }
     },
     error: function(){ console.warn('Could not load content sheet — showing defaults.'); }
