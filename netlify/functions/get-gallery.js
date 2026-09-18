@@ -8,8 +8,10 @@
 //      across ALL visitors within that window don't call GitHub again at all.
 //
 // Optional environment variable (Netlify dashboard → Environment variables):
-//   GITHUB_TOKEN = a GitHub Personal Access Token with only "public_repo" (read) scope.
-// Works without it too (using anonymous requests), just with a lower ceiling.
+//   GITHUB_TOKEN = a GitHub Personal Access Token, fine-grained, scoped to this repo,
+//   with "Contents: Read-only" permission.
+// If this token is missing, invalid, or expired, requests automatically retry
+// without it — falling back to the 60/hour anonymous limit rather than breaking.
 
 const GITHUB_OWNER = "firestarternepal-2015";
 const GITHUB_REPO = "firestarternepal.com";
@@ -24,18 +26,28 @@ exports.handler = async function (event) {
   }
 
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${GITHUB_GALLERY_PATH}/${encodeURIComponent(folder)}?ref=${GITHUB_BRANCH}`;
-
-  const headers = { 'User-Agent': 'firestarter-nepal-site' };
-  if (process.env.GITHUB_TOKEN) {
-    headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
-  }
+  const baseHeaders = { 'User-Agent': 'firestarter-nepal-site' };
 
   try {
-    const res = await fetch(url, { headers });
+    let res;
+
+    if (process.env.GITHUB_TOKEN) {
+      res = await fetch(url, {
+        headers: { ...baseHeaders, Authorization: `token ${process.env.GITHUB_TOKEN}` },
+      });
+      // 401 = invalid/expired token, 403 = token present but rejected (e.g. revoked).
+      // Either way, retry anonymously instead of treating this as "no photos."
+      if (res.status === 401 || res.status === 403) {
+        res = await fetch(url, { headers: baseHeaders });
+      }
+    } else {
+      res = await fetch(url, { headers: baseHeaders });
+    }
 
     if (!res.ok) {
-      // Folder doesn't exist yet, or GitHub rejected the request — return an empty
-      // list rather than an error, so the page just shows its placeholder tiles.
+      // Folder genuinely doesn't exist yet, or both attempts were rejected
+      // (e.g. anonymous limit also hit) — return an empty list rather than an
+      // error, so the page just shows its placeholder tiles.
       return {
         statusCode: 200,
         headers: { 'Cache-Control': 'public, max-age=120' },
