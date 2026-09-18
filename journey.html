@@ -382,7 +382,7 @@ function renderGalleryHTML(images) {
   const placeholdersNeeded = Math.max(0, minTiles - images.length);
   const photoTiles = images.map(img => `<div class="gallery-item"><img src="${img.url}" alt="" loading="lazy"></div>`).join('');
   const placeholderTiles = Array.from({length: placeholdersNeeded})
-    .map(() => `<div class="gallery-tile"><div class="icon">＋</div>Add a photo to the GitHub folder</div>`).join('');
+    .map(() => `<div class="gallery-tile"><div class="icon">＋</div>Photos not added yet to display</div>`).join('');
   return photoTiles + placeholderTiles;
 }
 
