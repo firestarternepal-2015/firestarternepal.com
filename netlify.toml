@@ -1,3 +1,4 @@
 [build]
+  command = "node generate-gallery-manifest.js"
   functions = "netlify/functions"
   publish = "."
