@@ -350,67 +350,31 @@ function withSlug(c) {
   return { ...c, slug: (c.galleryFolder && c.galleryFolder.trim()) ? c.galleryFolder.trim() : slugify(c.title) };
 }
 
-// Photos live in a public GitHub repo, one subfolder per event/training, named
-// exactly like the event's Title:
+// Photos live in this same GitHub repo, one subfolder per event/training under
+// images/Events/, named exactly like the event's Title:
 //   images/Events/<Event Title>/photo1.jpg, photo2.jpg, ...
 // Use the optional "GalleryFolder" column in the Content sheet only when you want
 // the folder name to differ from the Title (e.g. two trainings sharing one title).
 //
-// The actual GitHub lookup happens server-side via netlify/functions/get-gallery.js
-// (not directly from the browser) so visitors never hit GitHub's rate limit — see
-// that file for details.
+// A build-time script (generate-gallery-manifest.js, run automatically by Netlify —
+// see netlify.toml) scans that folder and writes gallery-manifest.json. This page
+// just reads that one static file — no GitHub API calls at runtime, so there's no
+// rate limit at any traffic scale, and no token to create or ever renew.
 
-const galleryCache = {}; // slug -> array of {url, name}, in-memory for this page view
-const GALLERY_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes — see note below
+let galleryManifest = {};
 
-async function fetchGithubFolder(slug) {
+async function loadGalleryManifest() {
   try {
-    const res = await fetch(`/.netlify/functions/get-gallery?folder=${encodeURIComponent(slug)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.images) ? data.images : [];
+    const res = await fetch('/gallery-manifest.json');
+    if (res.ok) galleryManifest = await res.json();
   } catch (e) {
-    return [];
+    galleryManifest = {};
   }
 }
 
-// GitHub allows only 60 unread requests/hour per visitor for anonymous API calls, and this
-// page checks every event's folder on load. Caching in localStorage means a visitor (or you,
-// while testing) only actually hits GitHub once per event per 30 minutes — and if a fetch
-// ever comes back empty because the limit was hit, we fall back to the last known-good result
-// instead of wrongly showing "no photos yet."
 async function getEventImages(slug) {
-  if (galleryCache[slug]) return galleryCache[slug];
-
-  const storageKey = `fsnGallery:${slug}`;
-  let cached = null;
-  try {
-    const raw = localStorage.getItem(storageKey);
-    if (raw) cached = JSON.parse(raw);
-  } catch (e) {}
-
-  if (cached && (Date.now() - cached.t < GALLERY_CACHE_TTL_MS)) {
-    galleryCache[slug] = cached.images;
-    return cached.images;
-  }
-
-  const imgs = await fetchGithubFolder(slug);
-
-  if (imgs.length > 0) {
-    galleryCache[slug] = imgs;
-    try { localStorage.setItem(storageKey, JSON.stringify({ t: Date.now(), images: imgs })); } catch (e) {}
-    return imgs;
-  }
-
-  // Empty result — could be a real empty folder, or could be a rate-limited/failed request.
-  // If we have any older cached photos for this event, trust those over an empty result.
-  if (cached) {
-    galleryCache[slug] = cached.images;
-    return cached.images;
-  }
-
-  galleryCache[slug] = imgs;
-  return imgs;
+  const paths = galleryManifest[slug] || [];
+  return paths.map((p) => ({ url: p, name: decodeURIComponent(p.split('/').pop()) }));
 }
 
 function renderGalleryHTML(images) {
@@ -566,7 +530,7 @@ const legacyTrainings = [
 // Combined, newest-first where a year is known; the two trainings (month only, no year given
 // yet) sit right after the most recent concert — move them once exact years are added.
 let journeyData = [...legacyConcerts.slice(0, 1), ...legacyTrainings, ...legacyConcerts.slice(1)];
-journeyBrowser.setData(journeyData);
+loadGalleryManifest().then(() => journeyBrowser.setData(journeyData));
 
 // Full external gallery — e.g. a Google Photos album or Facebook album with everything.
 // Leave blank to hide the button; paste a link to show it at the top of the page.
