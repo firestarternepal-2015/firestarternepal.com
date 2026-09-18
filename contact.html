@@ -213,9 +213,9 @@
 <section id="contact-main">
   <div class="wrap contact-layout">
     <div class="contact-form-card">
-      <form name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="contactForm">
-        <input type="hidden" name="form-name" value="contact">
-        <p class="hp-field"><label>Don't fill this out if you're human: <input name="bot-field"></label></p>
+      <form id="contactForm">
+        <input type="hidden" name="access_key" value="9157cbc3-69b1-4688-8685-e5de0f0a9f2e">
+        <p class="hp-field"><label>Don't fill this out if you're human: <input type="checkbox" name="botcheck"></label></p>
 
         <div class="field-row">
           <div class="field">
@@ -248,14 +248,14 @@
         <h3>Find Us Elsewhere</h3>
         <p>Quickest way to reach us day-to-day — DMs and comments welcome.</p>
         <div class="social-row">
-          <a href="https://www.facebook.com/firestarternepal" target="_blank" rel="noopener">FB</a>
-          <a href="https://www.instagram.com/firestarternepal2015/" target="_blank" rel="noopener">IG</a>
+          <a href="https://www.facebook.com/Daneil1234567" target="_blank" rel="noopener">FB</a>
+          <a href="https://www.instagram.com/firestarternepal/" target="_blank" rel="noopener">IG</a>
           <a href="https://www.tiktok.com/@firestarter.nepal" target="_blank" rel="noopener">TT</a>
         </div>
       </div>
       <div class="info-card">
-        <div class="location">Firestarter Nepal</div>
-        <p style="margin-bottom:0;">A Christian movement uniting people through worship, music, and the Word of God, in Nepal and abroad.</p>
+        <div class="location">Pokhara, Nepal</div>
+        <p style="margin-bottom:0;">Firestarter Nepal — a Christian movement uniting people through worship, music, and the Word of God, in Nepal and abroad.</p>
       </div>
       <div class="info-card">
         <h3>Want To Give Instead?</h3>
@@ -275,16 +275,16 @@
       </div>
       <div class="foot-col">
         <h4>Connect</h4>
-        <a href="https://www.facebook.com/firestarternepal" target="_blank" rel="noopener">Facebook</a>
-        <a href="https://www.instagram.com/firestarternepal2015/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.facebook.com/Daneil1234567" target="_blank" rel="noopener">Facebook</a>
+        <a href="https://www.instagram.com/firestarternepal/" target="_blank" rel="noopener">Instagram</a>
         <a href="https://www.tiktok.com/@firestarter.nepal" target="_blank" rel="noopener">TikTok</a>
       </div>
     </div>
     <div class="foot-bottom">
       <span>© <span id="year"></span> Firestarter Nepal. All rights reserved.</span>
       <div class="social-row">
-        <a href="https://www.facebook.com/firestarternepal" target="_blank" rel="noopener">FB</a>
-        <a href="https://www.instagram.com/firestarternepal2015/" target="_blank" rel="noopener">IG</a>
+        <a href="https://www.facebook.com/Daneil1234567" target="_blank" rel="noopener">FB</a>
+        <a href="https://www.instagram.com/firestarternepal/" target="_blank" rel="noopener">IG</a>
         <a href="https://www.tiktok.com/@firestarter.nepal" target="_blank" rel="noopener">TT</a>
       </div>
     </div>
@@ -342,7 +342,7 @@ navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav
   init(); tick();
 })();
 
-// ---------- CONTACT FORM (Netlify Forms — no backend code needed) ----------
+// ---------- CONTACT FORM (Web3Forms — no backend code needed) ----------
 const form = document.getElementById('contactForm');
 const statusEl = document.getElementById('formStatus');
 const submitBtn = document.getElementById('submitBtn');
@@ -353,15 +353,23 @@ form.addEventListener('submit', function (e) {
   submitBtn.classList.add('disabled');
 
   const data = new FormData(form);
-  fetch('/', {
+  const payload = Object.fromEntries(data.entries());
+
+  fetch('https://api.web3forms.com/submit', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(data).toString(),
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(payload),
   })
-    .then(() => {
-      statusEl.textContent = "Thanks — we've got your message and will get back to you soon.";
-      statusEl.className = 'form-status success';
-      form.reset();
+    .then((res) => res.json())
+    .then((result) => {
+      if (result.success) {
+        statusEl.textContent = "Thanks — we've got your message and will get back to you soon.";
+        statusEl.className = 'form-status success';
+        form.reset();
+      } else {
+        statusEl.textContent = "Something went wrong sending that. Please try again, or reach us on social media below.";
+        statusEl.className = 'form-status error';
+      }
       submitBtn.textContent = 'Send Message';
       submitBtn.classList.remove('disabled');
     })
