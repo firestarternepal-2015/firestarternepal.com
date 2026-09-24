@@ -217,7 +217,7 @@
   .card-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(290px,1fr)); gap:38px;}
   .pin-card{
     background:var(--paper); color:var(--ink); padding:30px 28px;
-    position:relative; max-width:400px; margin:0 auto;
+    position:relative; max-width:680px; margin:0 auto;
     clip-path:polygon(0.5% 2%, 4% 0%, 96% 1%, 99.5% 3%, 99% 97%, 95% 99.5%, 3.5% 99%, 1% 96.5%);
     box-shadow:0 14px 30px rgba(0,0,0,0.45);
     transition:transform .25s ease;
@@ -225,8 +225,13 @@
   .card-grid .pin-card:nth-child(odd){transform:rotate(-1.6deg);}
   .card-grid .pin-card:nth-child(even){transform:rotate(1.4deg);}
   .pin-card:hover{transform:rotate(0deg) translateY(-4px);}
+  .pin-media{display:flex; flex-direction:column; gap:16px; margin-bottom:16px;}
+  @media (min-width:640px){
+    .pin-media{flex-direction:row; align-items:stretch;}
+    .pin-media > *{flex:1 1 0; min-width:0;}
+  }
   .pin-card img.pin-photo{
-    width:100%; max-height:360px; object-fit:contain; display:block; margin:0 auto 16px;
+    width:100%; aspect-ratio:9/16; object-fit:contain; display:block; margin:0;
     background:var(--bg-elevated);
     box-shadow:0 6px 14px rgba(0,0,0,0.35);
   }
@@ -238,17 +243,17 @@
   }
   .pin-card .stamp{
     position:absolute; top:16px; right:18px;
-    font-family:'Permanent Marker', cursive; font-size:0.82rem;
+    font-family:'Permanent Marker', cursive; font-size:0.6rem;
     color:var(--red); border:2px solid var(--red); border-radius:50%;
-    width:52px; height:52px; display:flex; align-items:center; justify-content:center;
-    text-align:center; line-height:1; transform:rotate(10deg); opacity:0.85;
+    width:62px; height:62px; display:flex; align-items:center; justify-content:center;
+    text-align:center; line-height:1.15; transform:rotate(10deg); opacity:0.85; padding:4px;
   }
   .pin-card h3{font-family:'Anton'; font-size:1.25rem; text-transform:none; margin:6px 60px 12px 0; line-height:1.2; color:var(--ink);}
   .pin-card .meta{font-size:0.88rem; color:var(--ink); opacity:0.75; margin-bottom:12px;}
   .pin-card .meta span{display:block;}
   .pin-card .desc{font-size:0.94rem; color:var(--ink); opacity:0.82;}
   .pin-card .video-embed{
-    position:relative; width:100%; max-width:280px; margin:16px auto 0;
+    position:relative; width:100%; margin:0;
     aspect-ratio:9/16; background:#000; box-shadow:0 6px 14px rgba(0,0,0,0.35);
   }
   .pin-card .video-embed iframe{
@@ -578,9 +583,21 @@ function getYouTubeEmbedUrl(url) {
 
 function cardHTML(row, stampLabel) {
   const embedUrl = getYouTubeEmbedUrl(row.Video);
+  const hasMedia = row.Photo || embedUrl;
   return `
     <div class="pin-card">
-      ${row.Photo ? `<img class="pin-photo" src="${row.Photo}" alt="${row.Title || ''}">` : ''}
+      ${hasMedia ? `
+        <div class="pin-media">
+          ${row.Photo ? `<img class="pin-photo" src="${row.Photo}" alt="${row.Title || ''}">` : ''}
+          ${embedUrl ? `
+            <div class="video-embed">
+              <iframe src="${embedUrl}" title="${row.Title || 'Video'}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowfullscreen loading="lazy"></iframe>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
       <div class="pin-dot"></div>
       <div class="stamp">${stampLabel}</div>
       <h3>${row.Title || ''}</h3>
@@ -590,13 +607,6 @@ function cardHTML(row, stampLabel) {
         ${row.Leader ? `<span>${row.Leader}</span>` : ''}
       </div>
       ${row.Description ? `<div class="desc">${row.Description}</div>` : ''}
-      ${embedUrl ? `
-        <div class="video-embed">
-          <iframe src="${embedUrl}" title="${row.Title || 'Video'}"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen loading="lazy"></iframe>
-        </div>
-      ` : ''}
       ${row.Link ? `<a href="${row.Link}" target="_blank" rel="noopener" class="ticket-btn ghost small" style="margin-top:14px;">Take The Survey ↗</a>` : ''}
     </div>
   `;
@@ -609,7 +619,7 @@ function renderGrid(id, rows, emptyTitle, emptyBody) {
     el.innerHTML = `<div class="empty-state"><strong>${emptyTitle}</strong>${emptyBody}</div>`;
     return;
   }
-  el.innerHTML = all.map(r => cardHTML(r, (r.Type || '').trim().toLowerCase() === 'training' ? 'Class' : 'Event')).join('');
+  el.innerHTML = all.map(r => cardHTML(r, (r.Type || '').trim().toLowerCase() === 'training' ? 'Online Class' : 'Event')).join('');
 }
 renderGrid('eventsGrid', [],
   "Nothing scheduled just yet",
