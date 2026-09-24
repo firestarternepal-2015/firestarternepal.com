@@ -163,6 +163,8 @@
     clip-path:none; padding:15px 28px;
   }
   .ticket-btn.ghost:hover{border-color:var(--gold); color:var(--gold);}
+  .ticket-btn.small{padding:10px 22px 10px 16px; font-size:0.82rem;}
+  .ticket-btn.ghost.small{padding:9px 18px;}
 
   .hero-strip{
     position:absolute; bottom:0; left:0; right:0; z-index:2;
@@ -223,6 +225,10 @@
   .card-grid .pin-card:nth-child(odd){transform:rotate(-1.6deg);}
   .card-grid .pin-card:nth-child(even){transform:rotate(1.4deg);}
   .pin-card:hover{transform:rotate(0deg) translateY(-4px);}
+  .pin-card img.pin-photo{
+    width:100%; height:auto; display:block; margin-bottom:16px;
+    box-shadow:0 6px 14px rgba(0,0,0,0.35);
+  }
   .pin-card .pin-dot{
     position:absolute; top:-9px; left:50%; transform:translateX(-50%);
     width:18px; height:18px; border-radius:50%;
@@ -240,6 +246,18 @@
   .pin-card .meta{font-size:0.88rem; color:var(--ink); opacity:0.75; margin-bottom:12px;}
   .pin-card .meta span{display:block;}
   .pin-card .desc{font-size:0.94rem; color:var(--ink); opacity:0.82;}
+  .pin-card .video-embed{
+    position:relative; width:100%; max-width:280px; margin:16px auto 0;
+    aspect-ratio:9/16; background:#000; box-shadow:0 6px 14px rgba(0,0,0,0.35);
+  }
+  .pin-card .video-embed iframe{
+    position:absolute; inset:0; width:100%; height:100%; border:none;
+  }
+  .pin-card .ticket-btn{
+    background:var(--ink); color:var(--paper); border:none;
+    clip-path:polygon(0 0, 90% 0, 100% 50%, 90% 100%, 0 100%);
+  }
+  .pin-card .ticket-btn:hover{background:#000;}
 
   .empty-state{
     border:2px dashed var(--line-strong); padding:52px 28px; text-align:center; color:var(--text-muted);
@@ -521,14 +539,47 @@ function renderConcerts(extra) {
 }
 renderConcerts([]);
 
+// ---------- UPCOMING EVENTS & TRAININGS (seed data — always shown) ----------
+// SURVEY_LINK: the Google Form Mike Scheuzger wants used for topic-interest registration.
+const SURVEY_LINK = "https://docs.google.com/forms/d/e/1FAIpQLSc2QJpV0zgbZITokonRT__1mVG3kB_D44fPfOKf6JgZOZpxnQ/viewform";
+
+// PHOTO: paste an image URL here (e.g. from your images/ folder or GitHub) to show a
+// photo on the training card. Leave blank to show no photo.
+const UPCOMING_TRAINING_PHOTO = "images/Events/Mike CMMT/Mike CMMT.jpeg";
+
+// VIDEO_LINK: Mike's intro video for this training.
+const VIDEO_LINK = "https://youtube.com/shorts/xjqT1KOe9tY";
+
+const legacyUpcoming = [
+  {
+    Type: 'Training',
+    Title: 'Church Music Ministry Training',
+    Date: 'Oct 31, 2026, 7:30 PM (Nepal Time)',
+    Location: 'Online (Zoom)',
+    Leader: 'Mike Scheuzger — Pastor, Music Producer, Worship Leader & Coach (Switzerland)',
+    Description: 'Led by Mike Scheuzger — a pastor, music producer, worship leader, and coach from Switzerland — this session covers practical topics like worship culture, leading a team, songwriting, and audio basics. Whether you sing, play, or run sound, there\'s something here for you. Help shape which topics we focus on by taking the short survey below.',
+    Link: SURVEY_LINK,
+    Video: VIDEO_LINK,
+    Photo: UPCOMING_TRAINING_PHOTO,
+  },
+];
+
 // ---------- SHEET-DRIVEN CONTENT ----------
 // Paste your published Google Sheet CSV URL below (see README-SETUP.md).
 // Sheet columns: Type | Status | Title | Date | Location | Leader | Description
 const SHEET_CSV_URL = "";
 
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  const match = url.match(/(?:youtube\.com\/(?:shorts\/|watch\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+}
+
 function cardHTML(row, stampLabel) {
+  const embedUrl = getYouTubeEmbedUrl(row.Video);
   return `
     <div class="pin-card">
+      ${row.Photo ? `<img class="pin-photo" src="${row.Photo}" alt="${row.Title || ''}">` : ''}
       <div class="pin-dot"></div>
       <div class="stamp">${stampLabel}</div>
       <h3>${row.Title || ''}</h3>
@@ -538,18 +589,30 @@ function cardHTML(row, stampLabel) {
         ${row.Leader ? `<span>${row.Leader}</span>` : ''}
       </div>
       ${row.Description ? `<div class="desc">${row.Description}</div>` : ''}
+      ${embedUrl ? `
+        <div class="video-embed">
+          <iframe src="${embedUrl}" title="${row.Title || 'Video'}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowfullscreen loading="lazy"></iframe>
+        </div>
+      ` : ''}
+      ${row.Link ? `<a href="${row.Link}" target="_blank" rel="noopener" class="ticket-btn ghost small" style="margin-top:14px;">Take The Survey ↗</a>` : ''}
     </div>
   `;
 }
 
 function renderGrid(id, rows, emptyTitle, emptyBody) {
   const el = document.getElementById(id);
-  if (!rows.length) {
+  const all = [...rows, ...legacyUpcoming];
+  if (!all.length) {
     el.innerHTML = `<div class="empty-state"><strong>${emptyTitle}</strong>${emptyBody}</div>`;
     return;
   }
-  el.innerHTML = rows.map(r => cardHTML(r, (r.Type || '').trim().toLowerCase() === 'training' ? 'CLASS' : 'EVENT')).join('');
+  el.innerHTML = all.map(r => cardHTML(r, (r.Type || '').trim().toLowerCase() === 'training' ? 'Class' : 'Event')).join('');
 }
+renderGrid('eventsGrid', [],
+  "Nothing scheduled just yet",
+  "Follow us on social media below — the next date will land here the moment it's confirmed.");
 
 if (SHEET_CSV_URL) {
   Papa.parse(SHEET_CSV_URL, {
